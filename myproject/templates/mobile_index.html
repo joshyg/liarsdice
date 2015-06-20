@@ -1,0 +1,74 @@
+<!--<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}base.css" />-->
+<link rel="stylesheet" type="text/css" href="/static/mobile_base.css" />
+<script type="text/javascript">
+var menu_displayed = 0;
+function DisplayMenu() {
+  if(menu_displayed == 0) {
+    document.getElementById("menu").style.display = 'block';
+    menu_displayed = 1;
+  }
+  else {
+    document.getElementById("menu").style.display = 'none';
+    menu_displayed = 0;
+  }
+}  
+function DisplayGameForm(){
+  string = "";
+  string += "<form action=\"/request_game/?rn="+rand_num+"\" method=\"post\" enctype=\"multipart/form-data\">";
+  string += "{% csrf_token %}"
+  string += "<select name=\"num_players\" style=\"width: 80\">";
+  string += "<option value=2>2</option>";
+  string += "<option value=3>3</option>";
+  string += "<option value=4>4</option>";
+  string += "<option value=5>5</option>";
+  string += "</select> players<br>";
+  //string += "<br><input type=\"checkbox\" name=\"has_cpu\" value=\"1\" />Include CPU<br>";
+  string += "<input type=\"submit\" name=\'submit_type\' value=\"Submit Request\" class=\"button\" style=\"width : 30%\"/>";
+  string += "</form>";
+  document.getElementById('game_settings').innerHTML = string
+} 
+</script>
+<script type="text/javascript">
+var rand_num=0;
+function gen_rand_num(){
+  rand_num = Math.random();
+  document.getElementById('join_game').innerHTML = "<h1><a href=\"/join_game/?rn="+rand_num+"\">Join Game</a></h1>";
+  document.getElementById('logout').innerHTML = "<h1><a href=\"/logout/?rn="+rand_num+"\">Log Out</a></h1>";
+  document.getElementById('play_cpu').innerHTML = "<h1><a href=\"/?inagame=1&playing_cpu=1&rn="+rand_num+"\">Play Cpu</a></h1>";
+  //document.getElementById('test').innerHTML = rand_num;
+} 
+</script>
+</head>
+<body onLoad="javascript:gen_rand_num()">
+<!--
+<div style="text-align:right" class ="nav" style="display: 'none';">
+    <a onclick="DisplayMenu()" href="javascript:void(0);"><h2>{{ username }}</h2></a>
+    <ul id="menu" Class = "menu"
+      <li><h2><a href="/logout/">Log Out</a></h2></li>
+    </ul>
+    <br>
+</div>
+-->
+<br>
+<div class="index_page">
+<h1><a onclick="DisplayGameForm()" href="javascript:void(0);">Start Game</a></h1>
+<div id= 'game_settings'></div>
+<br>
+<br>
+<span id="join_game">
+<h1><a href="/join_game/">Join Game</a></h1>
+</span>
+<br>
+<br>
+<span id="play_cpu">
+<h1><a href="/?inagame=1&playing_cpu=1">Play Cpu</a></h1>
+</span>
+<br>
+<br>
+<span id="logout">
+<h1><a href="/logout/">Log Out</a></h1>
+</span>
+</div>
+<div id="test" style="display: 'none';"></div>
+</body>
+

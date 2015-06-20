@@ -1,0 +1,18 @@
+<head>
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}base.css" />
+</head>
+<body>
+<div class='join'>
+<h2>Game Requests</h2>
+{% for request in req_list %}
+  <h2>
+  {% if request.has_cpu == 0 %}
+    <a href = '/join_game/?requested_game={{request.id}}'>host: {{request.host}} requested players: {{ request.requested_players }} accepted players: {{ request.accepted_players }} </a>
+  {% else %}
+     <a href = '/join_game/?requested_game={{request.id}}'>host: {{request.host}} requested players: {{ request.requested_players }} accepted players: {{ request.accepted_players }} has_cpu </a>
+  {% endif %}
+  </h2>
+{% endfor %}
+</div>
+</body>
+

@@ -1,0 +1,188 @@
+{% if playing_cpu == 0  and my_turn == 0 and game_fsm != 'reroll' and game_fsm != 'game_over'%}
+  <meta http-equiv="refresh" content="3" > 
+{% endif %}
+<head>
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}base.css" />
+<script type="text/javascript">
+var menu_displayed = 0;
+var must_validate_form = 1;
+function DisplayMenu() {
+  if(menu_displayed == 0) {
+    document.getElementById("menu").style.display = 'block';
+    menu_displayed = 1;
+  }
+  else {
+    document.getElementById("menu").style.display = 'none';
+    menu_displayed = 0;
+  }
+}  
+function autovalidateForm()
+{
+  must_validate_form = 0;
+}
+function validateForm()
+{
+  if(must_validate_form == 1) {
+    var value=document.forms["claim_form"]["value"].value;
+    var amount=document.forms["claim_form"]["amount"].value;
+    var isint = 0;
+    for (var i = 1; i <= 6; i++){
+      if (value == i){
+        isint = 1;
+      }
+    }
+    if(isint != 1) { 
+      alert("claim value must be integer between 1 and 6");
+      return false;
+    }
+    isint = 0;
+    //the following is temporary.  amount must be a number, but in a large game i suppose it could be > 50
+    for (var i = 1; i <= 50; i++){
+      if (amount == i){
+        isint = 1;
+        return true;
+      }
+    }
+    if(isint != 1) { 
+      alert("claim amount must be integer between 1 and 6");
+      return false;
+    }
+  }
+}
+</script>
+<!--audio script-->
+<script type="text/javascript" src="{{STATIC_URL}}audio-player.js"></script>
+<script type="text/javascript">  
+    AudioPlayer.setup("{{STATIC_URL}}player.swf", {  
+        width: 0
+    });
+
+    function dice_sound() {
+        AudioPlayer.embed("player", {soundFile: "{{MEDIA_URL}}dice_sound.mp3", autostart: 'yes'});  
+    }
+
+</script>  
+</head>
+<body>
+<div style="text-align:right" class ="nav">
+    <a onclick="DisplayMenu()" href="javascript:void(0);"><h2>{{ username }}</h2></a>
+    <ul id="menu" Class = "menu">
+      <!--<li><a href="#">My Posts</a></li>-->
+      <li><h3><a href="/?exit_game=1">Exit Game</a></h3></li>
+      <li><h3><a href="/logout/">Log Out</a></h3></li>
+    </ul>
+    <br>
+</div>
+<br>
+<div class="center">
+<br>
+{% if game_fsm == 'game_over' %}
+  <h2>{{winner}} Wins!!</h2>
+  <form action="/" method="post" enctype="multipart/form-data" name="claim_form" onsubmit="return validateForm()">
+  {% csrf_token %}
+  <input type="hidden", name="game_id", value= "{{ game_id }}" />
+  {% if playing_cpu == 1 %}
+    <!--<input type="submit" name='submit_type' value="New Game" class="button" />-->
+  {%endif%}
+  </form>
+{%endif%}
+
+{% if game_fsm == 'eliminated' %}
+  <h2>{{username}} Loses!!</h2>
+{%endif%}
+
+{% for line in debug_log %}
+  {{line}}
+{% endfor %}
+{% ifequal game_fsm 0 %}
+  {{ log }}
+  <form action="/" method="post" enctype="multipart/form-data" name="claim_form" onsubmit="return validateForm()">
+  {% csrf_token %}
+  <input type="hidden", name="game_fsm", value='has_rolled' />
+  <input type="hidden", name="game_id", value= "{{ game_id }}" />
+  <input type="submit" name='submit_type' value="Roll Dice" class="button" onclick="dice_sound()"/>
+  </form>
+{% else %}
+  <h2>
+  {%for die in dice_list %}
+    <img src="{{MEDIA_URL}}/white_{{die}}_dice.png" alt="{{die}}">
+    <!--{{die}}-->
+  {% endfor %}
+  </h2>
+  {% for line in log %}
+    <h2>{{ line }}</h2>
+  {% endfor %}
+  {% if my_turn == 1 %}
+    {% if game_fsm == 'has_rolled' %}
+      <form action="/" method="post" enctype="multipart/form-data" name="claim_form" onsubmit="return validateForm()">
+      {% csrf_token %}
+      <input type="text" name = "amount"/>
+      <input type="text" name = "value"/>
+      <input type="hidden", name="game_fsm", value="has_claimed" />
+      <input type="hidden", name="game_id", value= "{{ game_id }}" />
+      <br>
+      <input type="submit" name='submit_type' value="Make Claim" class="button" />
+      {%if bullshittable == 1 %}
+        <input type="submit" name='submit_type' value="bullshit!!" class="button" onclick="autovalidateForm()"/>
+      {% endif %}
+      {% if playing_cpu == 1 %}
+        <!--<input type="submit" name='submit_type' value="New Game" class="button" />-->
+      {% endif %}
+      </form>
+    {% elif game_fsm == 'reclaim' %}
+      <form action="/" method="post" enctype="multipart/form-data" name="claim_form" onsubmit="return validateForm()">
+      {% csrf_token %}
+      <input type="text" name = "amount"/>
+      <input type="text" name = "value"/>
+      <input type="hidden", name="game_fsm", value="has_claimed" />
+      <input type="hidden", name="game_id", value= "{{ game_id }}" />
+      <input type="hidden", name="cpu_claim_amount", value= "{{ cpu_claim_amount }}" />
+      <input type="hidden", name="cpu_claim_value", value= "{{ cpu_claim_value }}" />
+      <br>
+      <input type="submit" name='submit_type' value="Make Claim" class="button" />
+      <input type="submit" name='submit_type' value="bullshit!!" class="button" onclick="autovalidateForm()"/>
+      {% if playing_cpu == 1 %}
+        <!--<input type="submit" name='submit_type' value="New Game" class="button" />-->
+      {% endif %}
+      </form>
+    {% elif game_fsm == 'has_claimed' %}
+      <form action="/" method="post" enctype="multipart/form-data" name="claim_form" onsubmit="return validateForm()">
+      {% csrf_token %}
+      <input type="text" name = "amount"/>
+      <input type="text" name = "value"/>
+      <input type="hidden", name="game_fsm", value="reclaim" />
+      <input type="hidden", name="game_id", value= "{{ game_id }}" />
+      <input type="hidden", name="cpu_claim_amount", value= "{{ cpu_claim_amount }}" />
+      <input type="hidden", name="cpu_claim_value", value= "{{ cpu_claim_value }}" />
+      <br>
+      <input type="submit" name='submit_type' value="Make Claim" class="button" />
+      <input type="submit" name='submit_type' value="bullshit!!" class="button" onclick="autovalidateForm()"/>
+      {% if playing_cpu == 1 %}
+        <!--<input type="submit" name='submit_type' value="New Game" class="button" />-->
+      {% endif %}
+      </form>
+    {%endif%}
+  {% endif %}  
+  {% ifequal game_fsm 'reroll' %}
+    <form action="/" method="post" enctype="multipart/form-data" name="claim_form" onsubmit="return validateForm()">
+    {% csrf_token %}
+    {% if playing_cpu == 1 %}
+      <input type="hidden", name="game_fsm", value='reroll' />
+    {% else %}
+      <input type="hidden", name="game_fsm", value='has_rolled' />
+    {% endif %}
+    <input type="hidden", name="game_id", value= "{{ game_id }}" />
+    <input type="submit" name='submit_type' value="Roll Dice" class="button" onclick="dice_sound()" />
+    {% if playing_cpu == 1 %}
+      <!--<input type="submit" name='submit_type' value="New Game" class="button" />-->
+    {% endif %}
+    </form>
+  {% endifequal %}
+{% endifequal %}
+</div>
+<a href="/test/">test</a>
+<!--<div class= "footer">
+<div id="player"></div><br />
+<a href="/?exit_game=1">Exit Game</a>
+</div>-->
+</body>

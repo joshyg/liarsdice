@@ -1,0 +1,761 @@
+{% if playing_cpu == 0  and my_turn == 0 and game_fsm != 'reroll' and game_fsm != 'game_over'%}
+  <!--
+  <meta http-equiv="refresh" content="3" > 
+  -->
+{% endif %}
+<head>
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}base.css" />
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}/jchat/css/jchat.css" />
+<!--[if lte IE 8]> 
+    <link type="text/css" rel="stylesheet" href="{{ STATIC_URL }}/jchat/css/ie_jchat.css" /> 
+<![endif]-->
+<script type="text/javascript" src="{{STATIC_URL}}jchat/js/jquery-1.3.2.min.js"></script>
+<script type="text/javascript">
+//place global variables below
+var platform = 'laptop';
+var die_theme = 'whimsy'; 
+var spin_in_progress = 0;
+</script>
+{% if playing_cpu == 0 %}
+  <script type="text/javascript">
+  //if playing_cpu == 0  and my_turn == 0 and game_fsm != 'reroll' and game_fsm != 'game_over'
+    
+  //ajax script, allows us to update the bullshit and my_turn vars without full refresh
+  //only if my_tunr = 1 or bullshit is called will we refresh the page
+  var bullshit_called = 0;
+  var bullshit_timestamp = 0;
+  var old_bullshit_timestamp = 0;
+  var cpu_claim_value = 0;
+  var cpu_claim_amount = 0;
+  function get_server_data() {
+    var xmlhttp = new XMLHttpRequest();
+    document.getElementById('test3').innerHTML = 'in get_server_data 2';
+    xmlhttp.onreadystatechange=function(){
+      document.getElementById('test3').innerHTML = 'in get_server_data 3';
+      if (xmlhttp.readyState==4 && xmlhttp.status==200 && spin_in_progress == 0){
+          document.getElementById('test4').innerHTML = 'receiving response';
+          server_data = eval( '(' + xmlhttp.responseText + ')');
+          my_turn = server_data.my_turn;
+          bullshit_called = server_data.bullshit_called;
+          bullshit_timestamp = server_data.bullshit_timestamp;
+          log = server_data.log;
+          bullshittable = server_data.bullshittable;
+          last_claim_amount = server_data.last_claim_amount;
+          last_claim_value = server_data.last_claim_value;
+          if (bullshit_called == 1 && bullshit_timestamp != old_bullshit_timestamp){
+            document.getElementById('my_turn').style.display = 'none';
+            document.getElementById('reclaim').style.display = 'none';
+            document.getElementById('has_claimed').style.display = 'none';
+            //prevent double detection
+            old_bullshit_timestamp = bullshit_timestamp;
+            //on bullshit we show other players dice
+            game_players = server_data.game_players;
+            //below, last_claim_amount == 0 would imply that bullshit was just detected and that no susbsequent claim has been made
+            //this implies that any bullshit detection would be a repeat
+            if(last_claim_amount != 0) {
+              player_dice_lists = server_data.player_dice_lists;
+              display_opponent_rolls();
+            }
+            //refresh claim restraints, we are starting a new round
+            last_claim_amount = 0;
+            last_claim_value = 0;
+            document.getElementById('test4').innerHTML += ' performing bullshit refresh';
+            ajax_submit('bullshit_refresh');
+          }
+          //regardless of if its our turn, we should still update the log
+          document.getElementById('log').innerHTML = '';
+          for (line in log) {
+            document.getElementById('log').innerHTML += log[line];
+          }
+          //reset views on my_turn == 1
+          if(my_turn == 0) {
+            document.getElementById('my_turn').style.display = 'none';
+          }
+          else {
+            document.getElementById(game_fsm).style.display = 'block';
+            document.getElementById('my_turn').style.display = 'block';
+            if(bullshittable == 1) {
+              document.getElementById('bullshittable').style.display = 'inline';
+            }
+            else {
+              document.getElementById('bullshittable').style.display = 'none';
+            }
+          }
+          document.getElementById('test4').innerHTML += 'my_turn = '+my_turn+ ' bullshit_called = '+bullshit_called+'game_fsm = '+game_fsm+'bullshittable='+bullshittable+'timestamp = ' + timestamp;
+      }
+    }//xmlhttp.onreadystatechange
+    if(game_fsm != 'reroll' && game_fsm != 'game_over' && game_fsm != 'eliminated') {
+      if(my_turn == 0 && bullshit_called == 0) {
+        xmlhttp.open("GET","/turncheck/?game_id="+game_id+"&ts="+timestamp,true);
+        xmlhttp.send();
+        //document.getElementById('test2').innerHTML = 'req sent timestamp = '+timestamp+ ' game_id = {{game_id}}';
+        //test with async=false
+        //server_data = eval( '(' + xmlhttp.responseText + ')');
+        //my_turn = server_data.my_turn;
+      }
+      //else if (bullshit_called == 1 && bullshit_timestamp != old_bullshit_timestamp ){
+         //shouldn't this be in the response, not the request?
+         //as is, it delays the execution of the bullshit _refresh until the next turn
+         //old_bullshit_timestamp = bullshit_timestamp;
+         //document.getElementById('test4').innerHTML += ' performing bullshit refresh';
+         //ajax_submit('bullshit_refresh');
+      //}
+      //else if(my_turn == 1){ 
+      //  document.getElementById('my_turn').style.display = 'block';
+      //}
+      else if (bullshit_called ==1  && bullshit_timestamp == old_bullshit_timestamp ){
+        xmlhttp.open("GET","/turncheck/?game_id={{game_id}}&ts="+timestamp,true);
+        xmlhttp.send();
+      }
+    }
+  }
+  </script>
+{% endif %}
+  <script type="text/javascript">
+  //set die type as global variable
+  var die_theme = 'whimsy'; 
+  //script grabs opponent rolls or display after player calls bullshit
+  function get_opponent_rolls() {
+    var xmlhttp_get_rolls = new XMLHttpRequest();
+    document.getElementById('test4').innerHTML += ' in get_opponent_rolls 2';
+    xmlhttp_get_rolls.onreadystatechange=function(){
+      document.getElementById('test4').innerHTML += ' in get_opponent_rolls 3';
+      if (xmlhttp_get_rolls.readyState==4 && xmlhttp_get_rolls.status==200 && spin_in_progress == 0){
+          document.getElementById('test4').innerHTML += ' receiving response';
+          server_data = eval( '(' + xmlhttp_get_rolls.responseText + ')');
+          game_players = server_data.game_players;
+          player_dice_lists = server_data.player_dice_lists;
+          display_opponent_rolls();
+      }
+    }
+    document.getElementById('test4').innerHTML = ' in get_opponent_rolls, sending req playing_cpu = {{playing_cpu}} game_id = {{game_id}}';
+    xmlhttp_get_rolls.open("GET","/get_opponent_rolls/?game_id="+game_id+"&playing_cpu={{playing_cpu}}&ts="+timestamp,true);
+    xmlhttp_get_rolls.send(); 
+  }
+  </script>
+  <script type="text/javascript">
+    function display_opponent_rolls(){
+      document.getElementById('test4').innerHTML += 'displaying opponent rolls';
+      document.getElementById('my_roll').style.display = 'none';
+      document.getElementById('opponents_dice').style.display = 'block';
+      document.getElementById('opponents_dice').innerHTML = '';
+      for (playa in game_players) {
+        document.getElementById('opponents_dice').innerHTML += '<h2>'+game_players[playa]+'</h2>';
+        for (die in player_dice_lists[playa]) {
+          document.getElementById('opponents_dice').innerHTML += '<img src=\'{{MEDIA_URL}}/'+die_theme+'_'+player_dice_lists[playa][die]+'_dice.png\' alt = \"wtf?\">';
+          //document.getElementById('opponents_dice').innerHTML += ' '+player_dice_lists[playa][die];
+        }
+        document.getElementById('opponents_dice').innerHTML += '<br>';
+      }
+    }
+  </script>
+{% if playing_cpu == 0 %}
+  <script type="text/javascript">
+    // if my_turn == 0 %}
+    //calls the function every 2.5 seconds
+    setInterval("get_server_data()",2500);
+    //setInterval(test(), 5000);
+    // endif %}
+  </script>
+{% endif %}
+<script type="text/javascript">
+//test function, texting interval
+var timestamp = 1;
+function gen_timestamp() {
+  document.getElementById('test3').innerHTML = timestamp;
+  timestamp = timestamp + 1;
+}
+setInterval("gen_timestamp()", 500);
+</script>
+<script type="text/javascript">
+var amount_first_click = 1;
+var value_first_click = 1;
+function clear_on_first_click(box) {
+  if(box.indexOf("amount") != -1 && amount_first_click == 1) {
+    amount_first_click = 0;
+    document.forms['has_rolled_claim_form']['amount'].value = '';
+    document.forms['has_claimed_claim_form']['amount'].value = '';
+    document.forms['reclaim_claim_form']['amount'].value = '';
+    //document.getElementById(box).value = '';
+  }
+  else if(box.indexOf("value") != -1 && value_first_click == 1) {
+    value_first_click = 0;
+    document.forms['has_rolled_claim_form']['value'].value = '';
+    document.forms['has_claimed_claim_form']['value'].value = '';
+    document.forms['reclaim_claim_form']['value'].value = '';
+    //document.getElementById(box).value = '';
+  }
+}
+</script>
+
+<script type="text/javascript">
+  //image array
+  function imagepreloader(){
+    document.getElementById('test').innerHTML = 'entered imagepreloader';
+    var dice_pics = new Array();
+    // create object
+    imageObj = new Image();
+    var i;
+    for(i = 0; i <=5; i++) {
+      dice_pics[i] = '{{MEDIA_URL}}/'+die_theme+'_'+i+'_dice.png'
+      imageObj.src = '{{MEDIA_URL}}/'+die_theme+'_'+i+'_dice.png'
+    }
+    document.getElementById('test').innerHTML = 'imagepreloader complete';
+    //initial view settings
+    document.getElementById('game_fsm_0').style.display = 'block';
+    document.getElementById('game_fsm_not_0').style.display = 'none';
+    document.getElementById('has_rolled').style.display = 'none';
+    document.getElementById('reroll').style.display = 'none';
+    document.getElementById('has_claimed').style.display = 'none';
+    document.getElementById('reclaim').style.display = 'none';
+    document.getElementById('game_over').style.display = 'none';
+    document.getElementById('eliminated').style.display = 'none';
+    document.getElementById('winner_banner').style.display = 'none';
+    document.getElementById('loser_banner').style.display = 'none';
+    document.getElementById('opponents_dice').style.display = 'none';
+    document.getElementById('test').innerHTML = 'display initialization complete';
+  }
+</script>
+<script type="text/javascript">
+  function reset_all_spans() {
+    document.getElementById('game_fsm_0').style.display = 'block';
+    document.getElementById('game_fsm_not_0').style.display = 'none';
+    document.getElementById('has_rolled').style.display = 'none';
+    document.getElementById('reroll').style.display = 'none';
+    document.getElementById('has_claimed').style.display = 'none';
+    document.getElementById('reclaim').style.display = 'none';
+    document.getElementById('game_over').style.display = 'none';
+    document.getElementById('eliminated').style.display = 'none';
+    document.getElementById('winner_banner').style.display = 'none';
+    document.getElementById('loser_banner').style.display = 'none';
+    document.getElementById('opponents_dice').style.display = 'none';
+    //reset claim fields
+    document.forms['has_rolled_claim_form']['amount'].value = 'claim amount';
+    document.forms['has_claimed_claim_form']['amount'].value = 'claim amount';
+    document.forms['reclaim_claim_form']['amount'].value = 'claim amount';
+    document.forms['has_rolled_claim_form']['value'].value = 'claim value';
+    document.forms['has_claimed_claim_form']['value'].value = 'claim value';
+    document.forms['reclaim_claim_form']['value'].value = 'claim value';
+    amount_first_click = 1;
+    value_first_click = 1;
+  }
+</script>
+<script type="text/javascript">
+//this script subsection handles roll_dice( and its supporting initialization logic
+//roll_dice is an ajax_request function
+  var game_id = '{{game_id}}';
+  var game_fsm = 0;
+  var submit_type = '';
+  var submit_in_progress = 0;
+  var my_turn = 0;
+  var dice_list = new Array();
+  var log = new Array();
+  var bullshittable = 0;
+  var winner = '';
+  var username = '';
+
+  //The following is called when we roll the dice, make a claim, or detect bullshit was called
+  function ajax_submit(action){
+    document.getElementById('test2').innerHTML = 'ajax_submit function entered';
+    var xmlhttproll = new XMLHttpRequest();
+    xmlhttproll.onreadystatechange=function(){
+      submit_in_progress = 0;
+      //document.getElementById('test').innerHTML = 'readystatechange  occured readystate = '+xmlhttproll.readyState+' status = '+xmlhttproll.status;
+      if (xmlhttproll.readyState==4 && xmlhttproll.status==200 && spin_in_progress == 0){
+          document.getElementById('test').innerHTML = 'roll_dice response occured';
+          server_data = eval( '(' + xmlhttproll.responseText + ')');
+          my_turn = server_data.my_turn;
+          game_fsm = server_data.game_fsm;
+          dice_list = server_data.dice_list;
+          document.getElementById('test').innerHTML = 'roll_dice server_data retrieved timestamp='+timestamp+' my_turn = '+server_data.my_turn;
+          log = server_data.log;
+          game_id = server_data.game_id;
+          bullshittable = server_data.bullshittable;
+          winner = server_data.winner;
+          username = server_data.username;
+          {% if playing_cpu == 1 %}
+          //when playing cpu a request should return with a claim, 
+          //hence we should populate last_claim_amount and last_claim_value
+            last_claim_amount = server_data.last_claim_amount;
+            last_claim_value = server_data.last_claim_value;
+            //FIX THIS!!!!
+            cpu_claim_amount = last_claim_amount;
+            cpu_claim_value = last_claim_value;
+            document.getElementById('test').innerHTML += 'cpu_claim_amount = '+cpu_claim_amount+'cpu_claim_value = '+cpu_claim_value;
+          {% endif %}
+          document.getElementById('test').innerHTML += 'roll_dice variables assigned game_fsm = '+game_fsm+' my_turn = '+my_turn;
+          //use game_fsm to block/unblock cretain views
+          if(game_fsm == 0){
+            //document.getElementById('game_fsm_0').style.display = 'block';
+            //document.getElementById('game_fsm_not_0').style.display = 'none';
+            reset_all_spans();
+          } 
+          else if(my_turn == 1) {
+            reset_all_spans();
+            document.getElementById('my_turn').style.display = 'block';
+            document.getElementById('game_fsm_not_0').style.display = 'block';
+            document.getElementById('game_fsm_0').style.display = 'none';
+            document.getElementById('test').innerHTML += 'view reset';
+            if(game_fsm == 'has_rolled'){
+              document.getElementById('has_rolled').style.display = 'block';
+              document.getElementById('my_roll').style.display = 'block';
+            }
+            else if(game_fsm == 'reroll') { 
+              document.getElementById('reroll').style.display = 'block';
+              get_opponent_rolls();
+            }
+            else if(game_fsm == 'has_claimed') { 
+              document.getElementById('has_claimed').style.display = 'block';
+            }
+            else if(game_fsm == 'reclaim') { 
+              document.getElementById('reclaim').style.display = 'block';
+            }
+            else if(game_fsm == 'eliminated') { 
+              document.getElementById('eliminated').style.display = 'block';
+              document.getElementById('loser_banner').style.display = 'block';
+              get_opponent_rolls();
+            }
+            else if(game_fsm == 'game_over') { 
+              document.getElementById('game_over').style.display = 'block';
+              document.getElementById('winner_banner').style.display = 'block';
+              get_opponent_rolls();
+            }
+          }
+          //if my_turn == 0, we block my_turn span
+          else {
+            reset_all_spans();
+            document.getElementById('my_turn').style.display == 'none';
+            document.getElementById('game_fsm_not_0').style.display = 'block';
+            document.getElementById('game_fsm_0').style.display = 'none';
+            document.getElementById('test').innerHTML += 'not my turn, submit forms blocked';
+            if(game_fsm == 'reroll') { 
+              document.getElementById('reroll').style.display = 'block';
+              get_opponent_rolls();
+            }
+            else if(game_fsm == 'has_rolled') { 
+              document.getElementById('my_roll').style.display = 'block';
+            }
+            else if(game_fsm == 'game_over') { 
+              document.getElementById('game_over').style.display = 'block';
+              document.getElementById('winner_banner').style.display = 'block';
+              get_opponent_rolls();
+            }
+            else if(game_fsm == 'eliminated') { 
+              document.getElementById('eliminated').style.display = 'block';
+              document.getElementById('loser_banner').style.display = 'block';
+              get_opponent_rolls();
+            }
+          }
+          //views have been chosen, now we
+          //use dice_list to populate dice images
+          document.getElementById('test').innerHTML += 'view chosen';
+          var count  = 0;
+          if(game_fsm != 'reroll'){
+            //show roll effect after roll
+            if(game_fsm == 'has_rolled') {
+              spin_in_progress = 1;
+              document.getElementById('test').innerHTML += 'beginning spin_dice recursion';
+              spin_dice(30);
+            }
+            for (die in dice_list) {
+              var die_image = eval('document.die'+count);
+              //document.getElementById('test').innerHTML += 'assigning  value '+dice_list[die]+' to die '+count;
+              die_image.src = '{{MEDIA_URL}}/'+die_theme+'_'+dice_list[die]+'_dice.png';
+              //die_img.style.display = 'none';
+              count+=1;
+            }
+            document.getElementById('test').innerHTML += 'forloop complete, count = '+count;
+            if(count < 5){
+              while (count < 5) {
+                var die_id = 'die'+count;
+                document.getElementById(die_id).style.display='none';
+                document.getElementById('test').innerHTML += 'cleared die '+count;
+                count+=1;
+             }
+           }
+           //document.getElementById('test').innerHTML = 'while loop complete';
+         }
+         if(bullshittable == 1) {
+           document.getElementById('bullshittable').style.display = 'inline';
+         }
+         else {
+           document.getElementById('bullshittable').style.display = 'none';
+         }
+         //populate log, which is currently a 1 or 2 line array 
+         document.getElementById('log').innerHTML = '';
+         for (line in log) {
+           document.getElementById('log').innerHTML += log[line];
+         }
+         //document.getElementById('test').innerHTML += 'ajax_req response ended, game_fsm = '+game_fsm;
+         if(game_fsm == 'game_over') {
+           document.getElementById('winner_banner').innerHTML = winner+' Wins!!';
+         }
+         else if(game_fsm == 'eliminated') {
+           document.getelementById('loser_banner').innerHTML = username+' Loses!!';
+         }
+      }
+    }
+    if(submit_in_progress == 0) {
+      document.getElementById('test').innerHTML = 'ajax_submission begins action = '+action;
+      if(action == 'roll_dice') {
+        document.getElementById('opponents_dice').innerHTML = '';
+        document.getElementById('test2').innerHTML = 'ajax_req sent, action = roll_dice';
+        document.getElementById('test2').innerHTML = 'ajax_req sent, action = roll_dice ts='+timestamp;
+        {% if playing_cpu == 0 %}
+          xmlhttproll.open('GET', '/?game_id='+game_id+'&ajax_submission=1&game_fsm=has_rolled&ts='+timestamp, true);
+        {% else %}
+          if(game_fsm == 0){
+            xmlhttproll.open('GET', '/?game_id='+game_id+'&ajax_submission=1&game_fsm=has_rolled&ts='+timestamp, true);
+          }
+          else {
+            xmlhttproll.open('GET', '/?game_id='+game_id+'&ajax_submission=1&game_fsm=reroll&ts='+timestamp, true);
+          }
+      
+        {% endif %}
+        //reset flags
+        submit_in_progress = 1;
+        xmlhttproll.send();
+        document.getElementById('test').innerHTML = 'roll_dice request sent, game_id = '+game_id;
+      }
+      else if(action == 'bullshit_refresh') {
+        document.getElementById('test2').innerHTML = 'bullshit refresh GET request being sent game_fsm='+game_fsm+' game_id='+game_id;
+        xmlhttproll.open('GET', '/?game_id='+game_id+'&ajax_submission=1&game_fsm='+game_fsm+'&debug_str=bullshit_refresh&ts='+timestamp, true);
+        submit_in_progress = 1;
+        xmlhttproll.send();
+      }
+      else {
+         document.getElementById('test').innerHTML = 'making a claim......................';
+         if(submit_type == 'bullshit!!'){
+           last_claim_amount = 0;
+           last_claim_value = 0;
+         }
+         form_valid = validateForm(action);
+         if(form_valid  == true) {
+           document.getElementById('test').innerHTML = 'form validated';
+           if(game_id == 'blabla') {
+             document.getElementById('test2').innerHTML = 'trying to make a claim with game_id null!!';
+           }
+           else { 
+             document.getElementById('test2').innerHTML = 'ajax_req sent, action = make_claim game_id = '+game_id;
+             if(action == 'make_claim') {
+               form = 'has_rolled_claim_form';
+             }
+             else if(action == 'reclaim') {
+               form = 'has_claimed_claim_form';
+             }
+             else if(action == 'reclaim_make_claim') {
+               form = 'reclaim_claim_form';
+             }
+             if(submit_type == 'Make Claim') {
+               var value=document.forms[form]["value"].value;
+               var amount=document.forms[form]["amount"].value;
+             }
+             else {
+               var value = '';
+               var amount = '';
+             }
+             document.getElementById('test').innerHTML += 'amount/value assigned';
+             document.getElementById('test2').innerHTML = 'sending ajax_req, action ='+action+'game_id = '+game_id+'submit_type='+submit_type+'timestamp='+timestamp;
+             if(action == 'make_claim' || action == 'reclaim_make_claim') {
+               {% if playing_cpu == 0 %}
+                 xmlhttproll.open('GET', '/?game_id='+game_id+'&ajax_submission=1&game_fsm=has_claimed&value='+value+'&amount='+amount+'&submit_type='+submit_type+'&debug_str=ajax_make_claim&ts='+timestamp, true);
+               {% else %}
+                 xmlhttproll.open('GET', '/?game_id='+game_id+'&ajax_submission=1&game_fsm=has_claimed&value='+value+'&amount='+amount+'&submit_type='+submit_type+'&cpu_claim_value='+cpu_claim_value+'&cpu_claim_amount='+cpu_claim_amount+'&debug_str=ajax_make_claim&ts='+timestamp, true);
+               {% endif %}
+             }
+             else if(action == 'reclaim') {
+               {% if playing_cpu == 0 %}
+                 xmlhttproll.open('GET', '/?game_id='+game_id+'&ajax_submission=1&game_fsm=reclaim&value='+value+'&amount='+amount+'&submit_type='+submit_type+'&debug_str=ajax_reclaim&ts='+timestamp, true);
+               {% else %}
+                 xmlhttproll.open('GET', '/?game_id='+game_id+'&ajax_submission=1&game_fsm=reclaim&value='+value+'&amount='+amount+'&submit_type='+submit_type+'&cpu_claim_value='+cpu_claim_value+'&cpu_claim_amount='+cpu_claim_amount+'&debug_str=ajax_reclaim&ts='+timestamp, true);
+               {% endif %}
+             }
+             document.getElementById('test2').innerHTML += 'ajax_req sent'
+             submit_in_progress = 1;
+             xmlhttproll.send();
+          }
+        }
+      }
+    }
+  }
+</script>
+
+<script type="text/javascript">
+function spin_dice(num_spins) {
+  document.getElementById('test').innerHTML += 'in spin_dice. num_spins = '+num_spins;
+  num_spins --;
+  var spin_count = 0;
+  for (die in dice_list) {
+    var rand_num = Math.floor(Math.random()*6+1); 
+    var die_image = eval('document.die'+spin_count);
+    //document.getElementById('test').innerHTML += 'in spin_dice. assigning  value '+dice_list[die]+' to die '+spin_count;
+    die_image.src = '{{MEDIA_URL}}/'+die_theme+'_'+rand_num+'_dice.png';
+    spin_count++;
+  }
+  if(num_spins > 0) {
+     //return setTimeout("spin_dice("+num_spins+")", 100);
+     setTimeout("spin_dice("+num_spins+")", 60);
+  }
+  else {
+    var count = 0;
+    for (die in dice_list) {
+      var die_image = eval('document.die'+count);
+      //document.getElementById('test').innerHTML += 'assigning  value '+dice_list[die]+' to die '+count;
+      die_image.src = '{{MEDIA_URL}}/'+die_theme+'_'+dice_list[die]+'_dice.png';
+      //die_img.style.display = 'none';
+      count+=1;
+    }
+    document.getElementById('test').innerHTML += 'forloop complete, count = '+count;
+    if(count < 5){
+      while (count < 5) {
+        var die_id = 'die'+count;
+        document.getElementById(die_id).style.display='none';
+        document.getElementById('test').innerHTML += 'cleared die '+count;
+        count+=1;
+     }
+   }
+  }
+  spin_in_progress = 0;
+}
+</script>
+
+<script type="text/javascript">
+var menu_displayed = 0;
+var must_validate_form = 1;
+var last_claim_amount = 0;
+var last_claim_value = 0;
+function DisplayMenu() {
+  if(menu_displayed == 0) {
+    document.getElementById("menu").style.display = 'block';
+    menu_displayed = 1;
+  }
+  else {
+    document.getElementById("menu").style.display = 'none';
+    menu_displayed = 0;
+  }
+}  
+function set_submit_type(str) {
+  submit_type = str;
+  document.getElementById('test').innerHTML = 'set_submit_type entered, submit_type = '+str;
+}
+//this is called when user declares bullshit.  It ensures we don't
+//check input fields on a bullshit call, as they are not relevant
+function autovalidateForm()
+{
+  must_validate_form = 0;
+}
+function validateForm(action)
+{
+  document.getElementById('test').innerHTML = 'validateForm entered, must_validate_form = '+must_validate_form;
+  if(must_validate_form == 1) {
+    if(action == 'make_claim') {
+      form = 'has_rolled_claim_form';
+    }
+    else if(action == 'reclaim') {
+      form = 'has_claimed_claim_form';
+    }
+    else if(action == 'reclaim_make_claim') {
+      form = 'reclaim_claim_form';
+    }
+    var value=document.forms[form]["value"].value;
+    var amount=document.forms[form]["amount"].value;
+    var isint = 0;
+    for (var i = 1; i <= 6; i++){
+      if (value == i){
+        isint = 1;
+      }
+    }
+    if(isint != 1) { 
+      alert("claim value must be integer between 1 and 6");
+      return false;
+    }
+    isint = 0;
+    //the following is temporary.  amount must be a number, but in a large game i suppose it could be > 50
+    for (var i = 1; i <= 50; i++){
+      if (amount == i){
+        isint = 1;
+      }
+    }
+    if(isint != 1) { 
+      alert("claim amount must be integer");
+      return false;
+    }
+    if(parseInt(amount) < last_claim_amount || (parseInt(amount) == last_claim_amount && value <= last_claim_value)) {
+      alert("must exceed last claim in either amount or value!! amount = "+amount+" value = "+value);
+      return false;
+    } 
+    return true;
+  }
+  //every click of bullshit will set must_validate to 0.
+  //since we no longer reload the page, we now must reset the variable
+  //for future turns
+  else {
+    must_validate_form = 1;
+    return true;
+  }
+}
+</script>
+<script type="text/javascript">
+  function set_game_id(form) { 
+    document.forms[form]["game_id"].value = game_id;
+  } 
+</script>
+<!--audio script-->
+<!--<script type="text/javascript" src="{{STATIC_URL}}audio-player.js"></script>
+<script type="text/javascript">  
+//    AudioPlayer.setup("{{STATIC_URL}}player.swf", {  
+//        width: 0
+//    });
+//
+//    function dice_sound() {
+//        AudioPlayer.embed("player", {soundFile: "{{MEDIA_URL}}dice_sound.mp3", autostart: 'yes'});  
+//    }
+//
+</script>  
+-->
+</head>
+<body onLoad="javascript:imagepreloader()">
+<!--hidden form submits  current state data when it becomes players turn-->
+<form action="/" method="post" enctype="multipart/form-data" name="submit_on_my_turn">
+{% csrf_token %}
+<input type="hidden", name="game_fsm", value='{{ game_fsm }}' />
+<input type="hidden", name="game_id", value= "{{ game_id }}" />
+<input type="hidden", name="autosubmission", value= "1" />
+</form>
+
+<div style="text-align:right" class ="nav">
+    <a onclick="DisplayMenu()" href="javascript:void(0);"><h2>{{ username }}</h2></a>
+    <ul id="menu" Class = "menu">
+      <!--<li><a href="#">My Posts</a></li>-->
+      <li><h3><a href="/?exit_game=1">Exit Game</a></h3></li>
+      <li><h3><a href="/logout/">Log Out</a></h3></li>
+    </ul>
+    <br>
+</div>
+<br>
+<div class="center">
+  <span id='game_over'>
+  <h2 id='winner_banner'></h2>
+  <form action="/" method="post" enctype="multipart/form-data" name="claim_form">
+  {% csrf_token %}
+  <input type="hidden", name="game_id", value= "" />
+  {% if playing_cpu == 1 %}
+    <input type="submit" name='submit_type' value="New Game" class="button" onclick="set_game_id('claim_form');"/>
+  {%endif%}
+  </form>
+  </span>
+
+  <span id='eliminated'>
+  <h2 id='loser_banner'></h2>
+  </span>
+
+  {% for line in debug_log %}
+    {{line}}
+  {% endfor %}
+  <div id='game_fsm_0'>
+    <form  action = "/" method="post" enctype="multipart/form-data" name="roll_dice_form" onsubmit="ajax_submit('roll_dice'); return false;">
+    {% csrf_token %}
+    <input type="hidden", name="game_fsm", value='has_rolled' />
+    <input type="hidden", name="game_id", value= "{{ game_id }}" />
+    <input type="submit" name='submit_type' value="Roll Dice" class="button" />
+    </form>
+  </div>
+  <div id='game_fsm_not_0'>
+    <span id = "my_roll" style = "white-space: nowrap;" >
+      <h2>
+        <span id= "die0" style="display: inline;"><img name= "die0" src="" alt="" ></span>
+        <span id= "die1" style="display: inline;"><img name= "die1" src="" alt="" ></span>
+        <span id= "die2" style="display: inline;"><img name= "die2" src="" alt="" ></span>
+        <span id= "die3" style="display: inline;"><img name= "die3" src="" alt="" ></span>
+        <span id= "die4" style="display: inline;"><img name= "die4" src="" alt="" ></span>
+      </h2>
+    </span>
+    <h2>
+    <div id='log'></div>
+    </h2>
+    {% for line in log %}
+      <h2>{{ line }}</h2>
+    {% endfor %}
+    <span id='my_turn'>
+        <span id='has_rolled' style="display: none;">
+          <form  method="post" enctype="multipart/form-data" name="has_rolled_claim_form" onsubmit="ajax_submit('make_claim'); return false;">
+          {% csrf_token %}
+          <input type="text" name = "amount" id = "has_rolled_claim_amount" value = "claim amount" class="claim" onclick="clear_on_first_click('has_rolled_claim_amount');"/>
+          <input type="text" name = "value" id = "has_rolled_claim_value" value = "claim value" class="claim" onclick="clear_on_first_click('has_rolled_claim_value');"/>
+          <input type="hidden", name="game_fsm", value="has_claimed" />
+          <input type="hidden", name="game_id", value= "{{ game_id }}" />
+          <input type="hidden", name="debug_str", value= "post_claim" />
+          <br>
+          <input type="submit" name='submit_type' value="Make Claim" class="button" onclick="set_submit_type('Make Claim')"/>
+            <span id="bullshittable">
+              <input type="submit" name='submit_type' value="bullshit!!" class="button" onclick="autovalidateForm();set_submit_type('bullshit!!');"/>
+            </span>
+          </form>
+        </span>
+        <span id='reclaim' style="display: none;">
+        <form action="/" method="post" enctype="multipart/form-data" name="reclaim_claim_form" onsubmit="ajax_submit('reclaim_make_claim'); return false;">
+        {% csrf_token %}
+        <input type="text" name = "amount" id = "reclaim_amount" value = "claim amount" class="claim" onclick="clear_on_first_click('reclaim_amount');"/>
+        <input type="text" name = "value" id = "reclaim_value" value = "claim value " class="claim" onclick="clear_on_first_click('reclaim_value');"/>
+        <input type="hidden", name="game_fsm", value="has_claimed" />
+        <input type="hidden", name="game_id", value= "{{ game_id }}" />
+        <input type="hidden", name="cpu_claim_amount", value= "{{ cpu_claim_amount }}" />
+        <input type="hidden", name="cpu_claim_value", value= "{{ cpu_claim_value }}" />
+        <br>
+        <input type="submit" name='submit_type' value="Make Claim" class="button" onclick="set_submit_type('Make Claim')"/>
+        <input type="submit" name='submit_type' value="bullshit!!" class="button" onclick="autovalidateForm(); set_submit_type('bullshit!!');"/>
+        </form>
+        </span>
+        <span id='has_claimed' style="display: none;">
+        <form action="/" method="post" enctype="multipart/form-data" name="has_claimed_claim_form" onsubmit="ajax_submit('reclaim'); return false;">
+        {% csrf_token %}
+        <input type="text" name = "amount" id = "has_claimed_amount" value = "claim amount" class="claim" onclick="clear_on_first_click('has_claimed_amount');"/>
+        <input type="text" name = "value" id = "has_claimed_value" value = "claim value" class="claim" onclick="clear_on_first_click('has_claimed_value');"/>
+        <input type="hidden", name="game_fsm", value="reclaim" />
+        <input type="hidden", name="game_id", value= "{{ game_id }}" />
+        <input type="hidden", name="cpu_claim_amount", value= "{{ cpu_claim_amount }}" />
+        <input type="hidden", name="cpu_claim_value", value= "{{ cpu_claim_value }}" />
+        <br>
+        <input type="submit" name='submit_type' value="Make Claim" class="button" onclick="set_submit_type('Make Claim')" />
+        <input type="submit" name='submit_type' value="bullshit!!" class="button" onclick="autovalidateForm();set_submit_type('bullshit!!');"/>
+        </form>
+        </span>
+    </span><!--myturn-->
+    <span id='opponents_dice' style = "white-space: nowrap;" ></span>
+    <span id='reroll' style="display: none;">
+      {% if playing_cpu == 1 %}
+        <form action="/" method="post" enctype="multipart/form-data" name="reroll_form" onsubmit="ajax_submit('roll_dice'); return false;">
+        {% csrf_token %}
+        <input type="hidden", name="game_fsm", value='reroll' />
+      {% else %}
+        <form action="/" method="post" enctype="multipart/form-data" name="reroll_form" onsubmit="ajax_submit('roll_dice'); return false;">
+        {% csrf_token %}
+        <input type="hidden", name="game_fsm", value='has_rolled' />
+      {% endif %}
+      <input type="hidden", name="game_id", value= "{{ game_id }}" />
+      <input type="submit" name='submit_type' value="Roll Dice" class="button"  />
+      </form>
+    </span>
+  </div><!--game_fsm_not_0-->
+</div>
+<br>
+<!--JG: jchat app below-->
+<div id="chat"></div>
+<!-- You should try to include this at another place at your convenience :D -->
+<script type="text/javascript" src="{{STATIC_URL}}jchat/js/jchat.js"></script>
+<script type="text/javascript">
+/* chat_id is passed form the view, the init_chat function then does all the magic */
+$(window).ready(function(){
+        //init_chat({{chat_id}}, "chat");
+        {% if playing_cpu == 0 %}
+          //username added for debug
+          init_chat(game_id, "chat", username);
+        {% endif %}
+})
+</script>
+
+<div id='test' style="display: none;"></div>
+<div id='test2' style="display: none;"></div>
+<div id='test3' style="display: none;"></div>
+<div id='test4' style="display: none;"></div>
+</body>

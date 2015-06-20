@@ -1,0 +1,67 @@
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}base.css" />
+<script type="text/javascript">
+var menu_displayed = 0;
+function DisplayMenu() {
+  if(menu_displayed == 0) {
+    document.getElementById("menu").style.display = 'block';
+    menu_displayed = 1;
+  }
+  else {
+    document.getElementById("menu").style.display = 'none';
+    menu_displayed = 0;
+  }
+}  
+function DisplayChangeForm(setting){
+  string = "";
+  if(setting ==  'password') {
+    string += "New Password:";
+    string += "<br><input type=\"password\"name=\'"+setting+"_2\' rows=1 cols=30 id=\'"+setting+"_2\'></textarea>";
+    string += "<br>Repeat New Password:";
+    string += "<br><input type=\"password\" name=\'"+setting+"\' rows=1 cols=30 id=\'"+setting+"\'></textarea><br><input type=\"submit\" value=\"Submit\" class=\"button\" />";
+  }
+  else {
+    string += "<br><textarea name=\'"+setting+"\' rows=1 cols=30 id=\'"+setting+"\'></textarea><br><input type=\"submit\" value=\"Submit\" class=\"button\" />";
+  }
+  document.getElementById(setting).innerHTML = string
+  link_id = "link_" + setting;
+  document.getElementById(link_id).style.display = 'none';
+} 
+function validateForm()
+{
+  var password=document.forms["password_form"]["password"].value;
+  var password_2=document.forms["password_form"]["password_2"].value;
+  if (password != password_2){
+    alert("Passwords don't Match!!");
+    return false;
+  }
+}
+</script>
+</head>
+<body>
+<div style="text-align:right" class ="nav">
+    <a onclick="DisplayMenu()" href="javascript:void(0);"><h3>{{ username }}</h3></a>
+    <ul id="menu" Class = "menu">
+      <!--<li><a href="#">My Posts</a></li>-->
+      <li><a href="/home/">Main</a></li>
+      <li><a href="/logout/">Log Out</a></li>
+    </ul>
+    <br>
+</div>
+<div class="center">
+<br>
+{% for setting, value  in settings_list %}
+  <form action="/{{setting}}/edit_settings/" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <h3>{{setting}}</h3>{{ value }}    <a onclick="DisplayChangeForm('{{ setting }}');" href="javascript:void(0);" id='link_{{ setting }}'>Change</a>
+  <div id= '{{ setting }}'></div>
+  </form>
+{%endfor%}
+  <br>
+  <form action="/password/edit_settings/" method="post" name="password_form" enctype="multipart/form-data" onsubmit="return validateForm()">
+  {% csrf_token %}
+  <a onclick="DisplayChangeForm('password');" href="javascript:void(0);" id='link_password'>Change Password</a>
+  <div id= 'password'></div>
+  </form>
+</div>
+</body>
+

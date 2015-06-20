@@ -1,0 +1,150 @@
+<head>
+<link rel="stylesheet" id="csslink" type="text/css" href="{{ STATIC_URL }}/static/base.css" />
+<script type="text/javascript">
+var platform = navigator.platform;
+function set_style(){
+  //document.getElementById('test').innerHTML = platform;
+  if(platform.indexOf("86") == -1 && platform.indexOf("Win32") == -1 && platform.indexOf("Mac") == -1) {
+    document.getElementById("csslink").href="/static/mobile_base.css";
+    document.getElementById("button").style.width = "80%";
+    document.getElementById("username").style.width = "40%";
+    document.getElementById("password").style.width = "40%";
+    document.getElementById("textbox_break").innerHTML = '';
+  }
+  
+}
+function set_platform(){
+  document.forms['login_form']['platform'].value = platform;
+  document.forms['new_user_form']['platform'].value = platform;
+}
+var username_first_click = 1;
+var password_first_click = 1;
+var new_username_first_click = 1;
+var new_password_first_click = 1;
+var repeat_new_password_first_click = 1;
+function clear_on_first_click(box) {
+  if(box == "username" && username_first_click == 1) {
+    username_first_click = 0;
+    document.getElementById("username").value = '';
+  }
+  else if(box == "password" && password_first_click == 1) {
+    password_first_click = 0;
+    document.getElementById("password").value = '';
+    document.getElementById("password").type = 'password';
+  }
+  else if(box == "new_username" && new_username_first_click == 1) {
+    new_username_first_click = 0;
+    document.getElementById("new_username").value = '';
+  }
+  else if(box == "new_password" && new_password_first_click == 1) {
+    new_password_first_click = 0;
+    document.getElementById("new_password").value = '';
+    document.getElementById("new_password").type = 'password';
+  }
+  else if(box == "repeat_new_password" && repeat_new_password_first_click == 1) {
+    repeat_new_password_first_click = 0;
+    document.getElementById("repeat_new_password").value = '';
+    document.getElementById("repeat_new_password").type = 'password';
+  }
+}
+function validateForm()
+{
+  var password=document.forms["new_user_form"]["new_password"].value;
+  var password_2=document.forms["new_user_form"]["repeat_new_password"].value;
+  if (password != password_2){
+    alert("Passwords don't Match!!");
+    return false;
+  }
+}
+</script>
+</head>
+<script type="text/javascript">
+var create_user_first_click = 1;
+function CreateUserForm(){
+  if(create_user_first_click == 1) {
+    str = "";
+    str += "<form action=\"/create_user/\" method=\"post\" name=\"new_user_form\" enctype=\"multipart/form-data\" onsubmit=\"return validateForm()\">";
+    str += "{% csrf_token %}";
+    str += '<input type="hidden" Name="platform" value = ""><br>';
+    str += '<input type="text" Name="new_username" id="new_username" class = "login_box" value = "username"  style = "width : 220px;" onselect="clear_on_first_click(\'new_username\');" onclick="clear_on_first_click(\'new_username\');">';
+    str += '<br>';
+    str += '<input type="text" Name="new_password" id="new_password" class = "login_box" value = "password"  style = "width : 220px;" onselect="clear_on_first_click(\'new_password\');" onclick="clear_on_first_click(\'new_password\');" onselect="clear_on_first_click(\'new_password\');">';
+    str += '<br>';
+    str += '<input type="text" Name="repeat_new_password" id="repeat_new_password" class = "login_box" value = "password"  style = "width : 220px;" onselect="clear_on_first_click(\'repeat_new_password\');" onclick="clear_on_first_click(\'repeat_new_password\');" onselect="clear_on_first_click(\'repeat_new_password\');">';
+    str += '<br>';
+    str += "<input type=\"submit\" name=\'submit_type\' value=\"Create Account\" class=\"button\"  id=\"create_account_button\" style = \"width : 220px;\"  onclick=\"set_platform();\"/>";
+    str += "</form>";
+    str += "<h2><a onclick='HideCreateUserForm()' href='javascript:void(0);'>I've been here before</a></h2>";
+    document.getElementById('CreateUserForm').innerHTML = str;
+    if(platform.indexOf("86") == -1 && platform.indexOf("Win32") == -1 && platform.indexOf("Mac") == -1) {
+      document.getElementById("new_username").style.width = "80%";
+      document.getElementById("new_password").style.width = "80%";
+      document.getElementById("repeat_new_password").style.width = "80%";
+      document.getElementById("create_account_button").style.width = "80%";
+    }
+    create_user_first_click = 0;
+  }
+  else {
+    document.getElementById("CreateUserForm").style.display = "block";
+  }
+  document.getElementById("create_user_link").style.display = "none";
+  document.getElementById("login_1").style.display = "none";
+  document.getElementById("login_2").style.display = "none";
+  document.getElementById("login_button").style.display = "none";
+} 
+</script>
+<script type="text/javascript">
+function HideCreateUserForm(){
+  document.getElementById("CreateUserForm").style.display = "none";
+  document.getElementById("create_user_link").style.display = "block";
+  document.getElementById("login_1").style.display = "block";
+  document.getElementById("login_2").style.display = "block";
+  document.getElementById("login_button").style.display = "block";
+}
+</script>
+
+<body onload = "javascript:set_style();">
+<!--
+<div class="frontbanner">
+<img src="/media/rabbitwow.jpg" alt="missing photo?" >
+</div>
+-->
+<div class="login_top" id = "login_top" style = "white-space: nowrap;">
+<img src="/media/whimsy_2_dice.png" alt="">
+<img src="/media/whimsy_3_dice.png" alt="">
+<img src="/media/whimsy_4_dice.png" alt="">
+<img src="/media/whimsy_5_dice.png" alt="">
+<img src="/media/whimsy_6_dice.png" alt="">
+<h2>Welcome To Liars Dice!!</h2>
+</div>
+<!--
+<style>
+    form { position: relative; }
+    input { background: transparent; position: relative;  z-index: 2; }
+    span { color: #999;  margin-right: 60%; position: absolute; top: 3px; z-index: 1; }
+</style>
+-->
+<form name = "login_form" action="/authenticate_user/" method="post">
+    {% csrf_token %}
+    <input type="hidden" Name="platform" value = "">
+    <!--<label for="username">Username:</label>-->
+    <!--<span id=textbox_break><br></span>-->
+    <div class="login" id="login_1">
+        <input type="text" Name="username" id="username" class="login_box" value="username"  style="width : 220px;" onclick="clear_on_first_click('username');"onselect="clear_on_first_click('username');">
+    </div>
+    <div class="login" id="login_2">
+        <input type="text" Name="password" id="password" class="login_box" value="password"  style="width : 220px;" onclick="clear_on_first_click('password');"onselect="clear_on_first_click('password');">
+    </div>
+    <div class="login_bottom" id="login_button">
+        <input type="submit" value="Login" class="button" id = "button" style = "width : 220px;" onclick="set_platform();"/>
+    </div>
+</form>
+<br>
+<div id="CreateUser" class="create_user">
+<h2><a onclick="CreateUserForm()" href="javascript:void(0);" id="create_user_link">I'm New</a></h2>
+<div id="CreateUserForm"></div>
+<br>
+<br>
+</div>
+<div id="test" style = "display: 'none';"></div>
+</body>

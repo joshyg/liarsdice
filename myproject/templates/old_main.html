@@ -1,0 +1,26 @@
+<body>
+<h1>hi</h1>
+{% ifequal has_rolled 0 %}
+  <form action="/" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="hidden", name="has_rolled", value=1 />
+  <input type="submit" name='submit_type' value="Roll Dice" class="button" />
+  </form>
+{% else %}
+  {%for die in dice_list %}
+    <h2>{{ die }} </h2>
+  {% endfor %}
+  <form action="/" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="text" name = "amount"/>
+  <input type="text" name = "value"/>
+  <input type="hidden", name="has_claimed", value=1 />
+  <input type="hidden", name="game_id", value= "{{ game_id }}" />
+  <input type="submit" name='submit_type' value="Make Claim" class="button" />
+  </form>
+  {% ifequal has_claimed 1 %}
+    <br>Claim value: {{ value }}<br>Claim amount: {{ amount }}<br>
+  {%endifequal%}
+  {{ log }}
+{% endifequal %}
+
