@@ -18,8 +18,6 @@ if(location == 'server'):
           'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
           'NAME': 'joshyg_liarsdice',                      # Or path to database file if using sqlite3.
           'USER': 'joshyg_liarsdice',                      # Not used with sqlite3.
-          #'USER': 'joshyg',                      # Not used with sqlite3.
-          'PASSWORD': 'monkeyoctagon',                  # Not used with sqlite3.
           'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
           'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
       }
