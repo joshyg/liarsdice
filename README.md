@@ -42,3 +42,8 @@ I became obsessed with this game for like 2 months.  I wrote a script to see if 
 
 * The python has two space indents, which was the style at the company I worked at at the time.  Shockingly they are still in business.
 * The code could be more organized and the front end is pretty basic. One day...
+
+
+## Disclaimer
+
+The jchat app is not my code.  I pulled it from sourceforge when I first wrote this app.  To learn more enter jchat [here](http://www.google.com)
