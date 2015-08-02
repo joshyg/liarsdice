@@ -19,7 +19,7 @@ and you have 3 dice, it will:
 
 * Make a bs claim 25% of the time
 
-This ridiculously simple algorithm is surprisingly effective.  Go ahead and see for yourself on http://liarsdice.joshyg.webfactional.com
+This ridiculously simple algorithm is surprisingly effective.  Go ahead and see for yourself on http://liarsdice.joshyg.com
 
 ## Rules of the Game
 
